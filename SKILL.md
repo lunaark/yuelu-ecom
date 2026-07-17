@@ -13,7 +13,7 @@ description: 电商详情页生成——根据产品信息自动匹配屏数模�
 
 **代码是画布，AI 是画笔。**
 
-用 SVG/HTML 代码精确锁定布局（文字位置、元素尺寸、间距比例），再交给 GPT Image 2 进行风格化上色渲染。代码控制「在哪」，AI 控制「好看」。
+用 SVG/HTML 代码精确锁定布局（文字位置、元素尺寸、间距比例），再交给图片生成工具进行风格化上色渲染。代码控制「在哪」，AI 控制「好看」。
 
 优势：
 - 布局精确可控，不会出现 AI 随意挪位置的问题
@@ -23,7 +23,8 @@ description: 电商详情页生成——根据产品信息自动匹配屏数模�
 ## 前置依赖
 
 - Chrome DevTools MCP（截图用）
-- GPT Image 2 API 或同类图片生成 API（上色用，见下方「配置」一节）
+- Codex 内置图片生成工具（优先，无需 API Key）
+- 其他环境可选用 GPT Image 2 或兼容图片生成 API（见「可选配置」）
 - Python PIL（拼接用）
 
 ## 工作流
@@ -124,17 +125,8 @@ description: 电商详情页生成——根据产品信息自动匹配屏数模�
 
 如果用户没有提供产品图：
 
-```bash
-# 用 GPT Image 2 generations 接口生成产品图
-curl -s -m 120 -X POST "$IMAGE_GEN_ENDPOINT" \
-  -H "Authorization: Bearer $IMAGE_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "gpt-image-2",
-    "prompt": "产品描述..., professional product photography, white background, studio lighting",
-    "size": "1024x1024"
-  }'
-```
+1. **Codex（默认）**：直接调用内置图片生成工具，生成正方形、干净背景的产品主图。不要索要 API Key，也不要调用外部接口。
+2. **其他环境**：优先使用环境自带的图片生成能力；确实没有时，再使用「可选配置」中的外部 API。
 
 生成后保存为 `product.png`，后续所有屏的上色提示词中引用同一产品描述以保持一致性。
 
@@ -192,7 +184,21 @@ navigate_page → file:///path/to/screen.html
 take_screenshot → fullPage: true, filePath: /path/to/screen-wireframe.png
 ```
 
-#### 5.3 压缩 + GPT 上色
+#### 5.3 使用 Codex 内置图片工具上色（默认）
+
+在 Codex 中，将当前屏的线框截图作为参考图传给内置图片生成/编辑工具，并在提示词中说明：
+
+- 保留线框中的版式结构和全部中文文案
+- 用产品主图作为第二张参考图，保持产品外观一致
+- 将虚线占位框替换为真实产品或场景，不保留辅助线
+- 遵循当前屏的风格、色板和摄影方向
+- 输出与线框最接近的可用比例
+
+每次生成后保存为 `screen{N}-colored.png`。多屏可并行调用图片工具，但同一产品必须始终附带同一张 `product.png`。
+
+#### 5.4 外部 API 上色（可选兜底）
+
+仅当当前环境没有原生图片生成工具时，才使用以下方案：
 
 ```bash
 # 压缩到 1024px 以内（API 限制）
@@ -236,7 +242,7 @@ elif 'url' in d:
 
 **并行策略：** 截图需要串行（Chrome 同一时间只渲染一个页面），但 API 调用可以并行（用 `run_in_background`），大幅加速。
 
-#### 5.4 拼接长图
+#### 5.5 拼接长图
 
 ```python
 from PIL import Image
@@ -277,12 +283,12 @@ result.save('output.png', quality=95)
 ### 产品一致性（垫图）
 多屏出现同一产品时：
 1. 先单独生成一张产品主图，保存为 `product.png`
-2. **垫图方式（推荐）**：如果用 Codex/Claude Code，直接把产品主图和线框一起发过去，AI 会自动参考产品外观
-3. **API 方式**：在每屏的上色提示词中用相同文字描述产品外观，关键特征要具体（"glass bottle with white cap, golden orange juice inside"）
+2. **Codex 垫图方式（推荐）**：调用内置图片编辑工具时，同时提供产品主图和当前屏线框
+3. **API 方式（可选兜底）**：在每屏的上色提示词中用相同文字描述产品外观，关键特征要具体（"glass bottle with white cap, golden orange juice inside"）
 4. 垫图比纯文字描述更稳定，优先用垫图
 
 ### 批量加速
-多屏可以并行处理——每屏的截图、压缩、API 调用互不依赖，用 `run_in_background` 并行发送。
+多屏可以并行处理。Codex 中可并行调用内置图片工具；外部 API 模式可并行发送各屏请求。
 
 ### 不要在线框里放过渡文字
 类似"▼ 下一篇"的过渡文字会在拼接后显得多余，只在最后一屏放收尾信息。
@@ -309,9 +315,9 @@ result.save('output.png', quality=95)
 - 最终长图：`ecom-complete.png`
 - 工作目录：用户指定或当前目录
 
-## 配置
+## 可选配置
 
-在 `config.env` 中填入你自己的图片生成 API 信息（支持 gpt-image-2 或同类 OpenAI 兼容接口）：
+**Codex 用户跳过本节。** 只有当前环境没有原生图片生成工具时，才在 `config.env` 中填写图片生成 API 信息：
 
 ```
 IMAGE_API_KEY=你的API_KEY

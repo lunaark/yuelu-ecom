@@ -20,9 +20,11 @@ git clone https://github.com/lunaark/yuelu-ecom.git ~/.claude/skills/yuelu-ecom
 
 重启对应工具后，说“帮我做一个商品详情页”即可触发。
 
-## 配置
+## Codex 无需配置 API
 
-复制并修改 `config.env`，填入兼容图片生成接口的地址与密钥：
+在 Codex 中使用时，Skill 会直接调用内置图片生成工具完成产品图生成和线框上色，不需要 API Key。
+
+只有运行环境没有原生图片生成能力时，才需要复制并修改 `config.env`，接入兼容的图片生成接口：
 
 ```env
 IMAGE_API_ENDPOINT=https://你的接口地址/v1/images/edits
@@ -43,13 +45,19 @@ IMAGE_API_KEY=你的API_KEY
 
 完整规则请阅读 [SKILL.md](SKILL.md)。
 
+## 完整案例
+
+仓库包含 2 套由同一套工作流生成的完整商品详情页，可点击查看原图：
+
+- [阳光鲜榨 NFC 橙汁（10 屏）](examples/orange-juice-detail-page.png)
+- [手工燕麦曲奇（5 屏）](examples/oatmeal-cookie-detail-page.png)
+
 ## 依赖
 
 - 可截图 HTML/SVG 的浏览器工具
-- GPT Image 2 或兼容图片生成 API
+- Codex 内置图片生成工具；其他环境可使用兼容图片生成 API
 - Python Pillow
 
 ## License
 
 [MIT](LICENSE)
-
